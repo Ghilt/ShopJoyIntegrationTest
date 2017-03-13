@@ -7,48 +7,46 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.databinding.DataBindingUtil;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.TextView;
 import android.widget.Toast;
 
+import beacons.shouse.se.beacontest.databinding.ActivityMainBinding;
+import beacons.shouse.se.databinding.ScanUI;
 import se.injou.shopjoy.sdk.HistoryEntry;
 import se.injou.shopjoy.sdk.ShopJoySDK;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ScanUIListener {
 
-    private static String API_KEY = "ENTER API KEY HERE";
+    private static String API_KEY = "33a0b7dc8be1da77165ef29403d334159b1befe7a178f63d6885ea4ca5b58a9f";
 
     private static final long SCAN_PERIOD = 10000;
     private ShopJoySDK beaconManager;
     private BluetoothAdapter mBluetoothAdapter;
 
     private Handler mHandler;
-    private TextView scanView;
-    private TextView shopJoyView;
     private boolean permissionsGranted = false;
-
+    private ScanUI scanUi;
+    private ActivityMainBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
 
-        scanView = (TextView) findViewById(R.id.textViewScan);
-        shopJoyView = (TextView) findViewById(R.id.textViewBottom);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+        scanUi = new ScanUI(this, "ScanUI", "","   No shopjoy \nsign of life yet");
+        binding.setScanUI(scanUi);
+        binding.contentMainInclude.setScanUIContent(scanUi);
+
+        setSupportActionBar(binding.toolbar);
 
         int permitted = PackageManager.PERMISSION_GRANTED;
         boolean needPermission;
@@ -93,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         if (permissionsGranted) {
             setupBLE();
         } else {
-            shopJoyView.setText("Permissions not granted\nrestart app");
+            binding.contentMainInclude.textViewBottom.setText("Permissions not granted\nrestart app");
         }
 
     }
@@ -105,25 +103,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void triggeredCampaign(HistoryEntry h, int triggerRange) {
                 Log.d("spx", "TriggeredCampaign from active app: " + h.campaignTitle);
-                shopJoyView.setText("Campaign title: " + h.campaignTitle);
+                scanUi.setShopJoyStatus("Campaign title: " + h.campaignTitle);
             }
         });
         Log.i("spx", "register shopjoy.");
         ShopJoySDK.register(this);
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.scanShopjoyButton);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startMonitoringShopjoy();
-                Snackbar.make(view, "Start Monitoring Shopjoy", Snackbar.LENGTH_SHORT)
-                        .setAction("Action", null).show();
-            }
-        });
-
         startMonitoringShopjoy();
     }
 
-    private void startMonitoringShopjoy() {
+    public void startMonitoringShopjoy() {
         Log.d("spx", "Start monitoring shopjoy");
         beaconManager.startMonitoring();
     }
@@ -155,12 +143,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        ;
+
 
         if (id == R.id.action_start_ble) {
             scanLeDevice(true);
+            scanUi.setScanText("this is not so insane");
+            Log.d("spx", scanUi.getScanText());
             return true;
         } else if (id == R.id.action_stop_ble) {
+            scanUi.setShopJoyStatus("this x2 like x3");
             scanLeDevice(false);
             return true;
         }
@@ -176,25 +167,14 @@ public class MainActivity extends AppCompatActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            scanView.setText(device.getName() + "  \t  " + device.getAddress());
-                            TextView beacons = (TextView) findViewById(R.id.textViewBeacon);
-                            beacons.setText((device.getName() == null ? "Unnamed" : device.getName()) + "  \t  " + device.getAddress() + "\n" + beacons.getText());
+                            scanUi.setScanText(device.getName() + "  \t  " + device.getAddress());
+                            scanUi.setBeaconBody((device.getName() == null ? "Unnamed" : device.getName()) + "  \t  " + device.getAddress() + "\n" + scanUi.getBeaconBody());
                         }
                     });
                 }
             };
 
     private void initLeScanning() {
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                scanLeDevice(true);
-                Snackbar.make(view, "Started scanning", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Toast.makeText(this, "Ble not supported", Toast.LENGTH_SHORT).show();
             finish();
@@ -212,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
         mHandler = new Handler();
     }
 
-    private void scanLeDevice(final boolean enable) {
+    public void scanLeDevice(final boolean enable) {
 
         if (enable) {
             // Stops scanning after a pre-defined scan period.
@@ -220,14 +200,14 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     mBluetoothAdapter.stopLeScan(mLeScanCallback);
-                    scanView.setText("Stopped");
+                    scanUi.setScanText("Stopped");
                 }
             }, SCAN_PERIOD);
 
             mBluetoothAdapter.startLeScan(mLeScanCallback);
         } else {
             mBluetoothAdapter.stopLeScan(mLeScanCallback);
-            scanView.setText("Stopped");
+            scanUi.setScanText("Stopped");
         }
     }
 

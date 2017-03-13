@@ -1,1 +1,1 @@
-include ':app', ':shopJoySDK-release'
+include ':app', ':shopJoySDK-release', ':new-shopJoySDK-release'
