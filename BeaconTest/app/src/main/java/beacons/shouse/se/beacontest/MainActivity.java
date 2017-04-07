@@ -26,7 +26,7 @@ import se.injou.shopjoy.sdk.ShopJoySDK;
 
 public class MainActivity extends AppCompatActivity implements ScanUIListener {
 
-    private static String API_KEY = "33a0b7dc8be1da77165ef29403d334159b1befe7a178f63d6885ea4ca5b58a9f";
+    private static String API_KEY = "ENTER API KEY HERE";
 
     private static final long SCAN_PERIOD = 10000;
     private ShopJoySDK beaconManager;
